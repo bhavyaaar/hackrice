@@ -2,7 +2,6 @@
 
 Student financial runway coach. Expo app + FastAPI + Nessie + Supabase Auth.
 
-Do not push until you say so.
 
 ## 1. Supabase
 
