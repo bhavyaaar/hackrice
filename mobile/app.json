@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Northstar",
+    "slug": "northstar",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "northstar",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Northstar uses photos to scan your award letter.",
+          "cameraPermission": "Northstar uses the camera to scan your award letter."
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.northstar.mobile"
+    },
+    "android": {
+      "package": "app.northstar.mobile"
+    }
+  }
+}

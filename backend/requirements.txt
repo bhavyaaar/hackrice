@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+httpx
+python-dotenv
+pydantic
+PyJWT
+supabase
+anthropic
+python-multipart
+pillow
+pytesseract

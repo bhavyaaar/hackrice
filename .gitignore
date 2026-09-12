@@ -1,0 +1,15 @@
+.env
+.env.local
+.venv
+venv
+__pycache__/
+*.pyc
+*.db
+.DS_Store
+node_modules/
+dist/
+.expo/
+mobile/.expo/
+mobile/dist/
+backend/northstar.db
+*.lockb
