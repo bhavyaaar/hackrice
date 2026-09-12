@@ -30,10 +30,12 @@ cd mobile
 cp .env.example .env
 # set EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY
 # EXPO_PUBLIC_API_URL=http://localhost:8000  (use your LAN IP on a physical phone)
-npx expo start
+npx expo start --clear
 ```
 
-Tabs: Home · Plan · Learn. Award-letter camera is Learn → Scan, not its own tab.
+Start Expo from `mobile/` only. Running `npx expo` from the hackrice repo root makes Metro look in the wrong `node_modules` (or downloads Expo 57 via npx), which surfaces as `expo-asset could not be found` in FontLoader.
+
+Tabs: Dashboard · Scan · Finances · Advisor · Profile.
 
 ## Agents
 

@@ -1,15 +1,17 @@
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { bootstrap, studentState, type StudentState } from "../../src/lib/api";
-import { supabase } from "../../src/lib/supabase";
 import { colors, shadow } from "../../src/theme";
 
 export default function HomeScreen() {
   const [state, setState] = useState<StudentState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
     try {
+      setError(null);
       await bootstrap();
       setState(await studentState());
     } catch (err) {
@@ -22,65 +24,146 @@ export default function HomeScreen() {
   }, []);
 
   const safe = state?.safe_to_spend ?? 0;
+  const onTrack = safe > 0 && !state?.runway_shortfall_date;
+  const food = state?.spending_by_category?.food_delivery ?? 0;
+  const bills = state?.upcoming_bills ?? [];
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ padding: 20, paddingTop: 56 }}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={{ padding: 20, paddingTop: 56, paddingBottom: 40 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={async () => {
+          setRefreshing(true);
+          await load();
+          setRefreshing(false);
+        }} />
+      }
+    >
       <View style={styles.top}>
-        <Text style={styles.logo}>✦ Northstar</Text>
-        <Pressable onPress={() => supabase.auth.signOut()}>
-          <Text style={styles.signOut}>Sign out</Text>
+        <View style={styles.brand}>
+          <Image
+            source={require("../../assets/northstar-mascot.png")}
+            style={styles.mascot}
+            resizeMode="cover"
+          />
+          <View>
+            <Text style={styles.logo}>northstar</Text>
+            <Text style={styles.tagline}>navigate your student finances</Text>
+          </View>
+        </View>
+        <Pressable style={styles.avatar} onPress={() => router.push("/(tabs)/profile")}>
+          <Text style={styles.avatarText}>⎋</Text>
         </Pressable>
       </View>
 
       <View style={[styles.hero, shadow]}>
-        <Text style={styles.kicker}>Safe to spend before next aid</Text>
-        <Text style={styles.heroNum}>${safe.toFixed(0)}</Text>
-        <Text style={styles.ok}>
+        <Text style={styles.kicker}>Safe to spend</Text>
+        <Text style={styles.heroNum}>${Math.round(safe).toLocaleString()}</Text>
+        <Text style={[styles.ok, !onTrack && { color: colors.danger }]}>
           {state?.days_until_next_disbursement != null
-            ? `${state.days_until_next_disbursement} days to next disbursement`
-            : "Link Nessie via bootstrap/seed"}
+            ? onTrack
+              ? `You're on track · ${state.days_until_next_disbursement} days to next aid`
+              : `Shortfall ${state.runway_shortfall_date} · ${state.days_until_next_disbursement} days to aid`
+            : "No Nessie account yet — runway shows $0 until you add a key"}
         </Text>
       </View>
 
       <View style={[styles.card, shadow]}>
-        <Text style={styles.cardTitle}>Upcoming bills</Text>
-        {(state?.upcoming_bills ?? []).length === 0 ? (
-          <Text style={styles.mute}>No bills yet — seed Nessie data</Text>
+        <Text style={styles.cardTitle}>Aid runway</Text>
+        <View style={styles.row}>
+          <Text style={styles.mute}>Balance</Text>
+          <Text style={styles.ink}>${Number(state?.balance ?? 0).toFixed(2)}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.mute}>Avg daily spend</Text>
+          <Text style={styles.ink}>${Number(state?.avg_daily_spend ?? 0).toFixed(2)}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.mute}>Projected at next disbursement</Text>
+          <Text style={styles.ink}>
+            {state?.projected_balance_at_next_disbursement == null
+              ? "—"
+              : `$${Number(state.projected_balance_at_next_disbursement).toFixed(0)}`}
+          </Text>
+        </View>
+      </View>
+
+      <View style={[styles.card, shadow]}>
+        <View style={styles.row}>
+          <Text style={styles.cardTitle}>Upcoming bills</Text>
+          <Text style={styles.link}>See all</Text>
+        </View>
+        {bills.length === 0 ? (
+          <Text style={styles.mute}>No bills yet. They appear after Nessie is linked.</Text>
         ) : (
-          state!.upcoming_bills.map((bill) => (
-            <View key={bill.payee} style={styles.row}>
-              <Text style={styles.ink}>{bill.payee}</Text>
-              <Text style={styles.ink}>${Number(bill.amount).toFixed(2)}</Text>
+          bills.map((bill) => (
+            <View key={bill.payee} style={styles.billRow}>
+              <View style={styles.billIcon}>
+                <Text>⌂</Text>
+              </View>
+              <Text style={[styles.ink, { flex: 1 }]}>{bill.payee}</Text>
+              <Text style={styles.amount}>${Number(bill.amount).toFixed(2)}</Text>
             </View>
           ))
         )}
       </View>
 
       <View style={[styles.card, shadow]}>
-        <Text style={styles.cardTitle}>Runway</Text>
-        <Text style={styles.mute}>
-          Shortfall date: {state?.runway_shortfall_date ?? "—"} · avg ${state?.avg_daily_spend ?? 0}/day
+        <Text style={styles.cardTitle}>Insight for you</Text>
+        <Text style={styles.body}>
+          {food > 0
+            ? `You spent $${food.toFixed(0)} on dining recently. Anchor can check a purchase against your runway.`
+            : "Once purchases sync from Nessie, Compass and Anchor will call out spend vs your next aid drop."}
         </Text>
-        <Text style={styles.mute}>Balance ${state?.balance ?? 0}</Text>
+        <Pressable style={styles.cta} onPress={() => router.push("/(tabs)/advisor")}>
+          <Text style={styles.ctaText}>Ask Anchor</Text>
+        </Pressable>
       </View>
 
-      {error ? <Text style={{ color: colors.danger, marginTop: 12 }}>{error}</Text> : null}
+      {error ? <Text style={styles.err}>{error}</Text> : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  top: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 18 },
+  top: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  brand: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  mascot: { width: 48, height: 48, borderRadius: 24 },
   logo: { color: colors.green, fontWeight: "800", fontSize: 20 },
-  signOut: { color: colors.mute },
+  tagline: { color: colors.mute, marginTop: 2, fontSize: 13 },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.card,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { fontSize: 16, color: colors.ink },
   hero: { backgroundColor: colors.greenSoft, borderRadius: 24, padding: 22, marginBottom: 16 },
   kicker: { color: colors.green, fontWeight: "600" },
-  heroNum: { fontSize: 48, fontWeight: "800", color: colors.ink, marginVertical: 4 },
+  heroNum: { fontSize: 52, fontWeight: "800", color: colors.ink, marginVertical: 4 },
   ok: { color: colors.green, fontWeight: "600" },
   card: { backgroundColor: colors.card, borderRadius: 20, padding: 18, marginBottom: 14 },
   cardTitle: { fontWeight: "700", color: colors.ink, marginBottom: 10, fontSize: 16 },
   mute: { color: colors.mute },
-  ink: { color: colors.ink },
-  row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 8 },
+  ink: { color: colors.ink, fontWeight: "600" },
+  amount: { color: colors.ink, fontWeight: "700" },
+  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6 },
+  billRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
+  billIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.greenSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  link: { color: colors.green, fontWeight: "600", marginBottom: 10 },
+  body: { color: colors.ink, lineHeight: 22 },
+  cta: { marginTop: 14, backgroundColor: colors.green, borderRadius: 16, paddingVertical: 12, alignItems: "center" },
+  ctaText: { color: "#fff", fontWeight: "700" },
+  err: { color: colors.danger, marginTop: 8 },
 });

@@ -5,6 +5,8 @@ import { createClient } from "@supabase/supabase-js";
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
 const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
+export const isSupabaseConfigured = Boolean(url);
+
 const storage = {
   getItem: (key: string) => SecureStore.getItemAsync(key),
   setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),

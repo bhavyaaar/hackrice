@@ -1,18 +1,25 @@
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { AuthField } from "../../src/components/AuthField";
+import { AuthShell } from "../../src/components/AuthShell";
 import { bootstrap } from "../../src/lib/api";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/theme";
 
 export default function SignupScreen() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   async function onSignup() {
     setError(null);
-    const { error: err } = await supabase.auth.signUp({ email, password });
+    const { error: err } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
+    });
     if (err) {
       setError(err.message);
       return;
@@ -26,51 +33,41 @@ export default function SignupScreen() {
   }
 
   return (
-    <View style={styles.wrap}>
-      <Text style={styles.mark}>✦ Northstar</Text>
-      <Text style={styles.title}>Create account</Text>
-      <TextInput
-        autoCapitalize="none"
-        keyboardType="email-address"
-        placeholder="Email"
-        placeholderTextColor={colors.mute}
-        style={styles.input}
+    <AuthShell title="Create Account" subtitle="One profile for runway, loans, and the three agents.">
+      <AuthField placeholder="Full Name" value={name} onChangeText={setName} icon="👤" />
+      <AuthField
+        placeholder="Email Address"
         value={email}
         onChangeText={setEmail}
+        keyboardType="email-address"
+        icon="✉"
       />
-      <TextInput
-        placeholder="Password (min 6)"
-        placeholderTextColor={colors.mute}
-        secureTextEntry
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-      />
+      <AuthField placeholder="Set Password" value={password} onChangeText={setPassword} secure icon="🔒" />
       {error ? <Text style={styles.err}>{error}</Text> : null}
       <Pressable style={styles.btn} onPress={onSignup}>
-        <Text style={styles.btnText}>Sign up</Text>
+        <Text style={styles.btnText}>Create Account  →</Text>
       </Pressable>
-      <Link href="/(auth)/login" style={styles.link}>
-        Already have an account? Log in
-      </Link>
-    </View>
+      <View style={styles.footer}>
+        <Text style={styles.mute}>Already have an account? </Text>
+        <Link href="/(auth)/login" style={styles.link}>
+          Login to Account
+        </Link>
+      </View>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.bg, padding: 28, justifyContent: "center" },
-  mark: { color: colors.green, fontSize: 18, fontWeight: "700", marginBottom: 8 },
-  title: { fontSize: 28, fontWeight: "700", color: colors.ink, marginBottom: 24 },
-  input: {
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-    fontSize: 16,
-    color: colors.ink,
+  btn: {
+    backgroundColor: colors.green,
+    borderRadius: 28,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 8,
   },
-  btn: { backgroundColor: colors.green, borderRadius: 18, padding: 16, alignItems: "center", marginTop: 8 },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  link: { marginTop: 18, color: colors.green, textAlign: "center" },
-  err: { color: colors.danger, marginBottom: 8 },
+  btnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  footer: { flexDirection: "row", justifyContent: "center", marginTop: 16, flexWrap: "wrap" },
+  mute: { color: colors.mute },
+  link: { color: colors.green, fontWeight: "800" },
+  err: { color: colors.danger, marginBottom: 8, textAlign: "center" },
 });
