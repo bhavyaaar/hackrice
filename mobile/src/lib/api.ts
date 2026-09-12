@@ -1,3 +1,5 @@
+import { fetch as expoFetch } from "expo/fetch";
+import { File } from "expo-file-system";
 import { supabase } from "./supabase";
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -19,7 +21,14 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API}${path}`, { ...init, headers });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || res.statusText);
+    let message = text || res.statusText;
+    try {
+      const body = JSON.parse(text) as { detail?: unknown };
+      if (typeof body.detail === "string" && body.detail) message = body.detail;
+    } catch {
+      /* use raw body */
+    }
+    throw new Error(message);
   }
   return res.json() as Promise<T>;
 }
@@ -53,17 +62,27 @@ export function horizonSimulate(extra_monthly: number) {
   });
 }
 
-export async function scanAwardLetter(uri: string, name = "award-letter.jpg") {
+export async function scanAwardLetter(uri: string, _name = "award-letter.jpg", _type?: string | null) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   const form = new FormData();
-  form.append("file", { uri, name, type: "image/jpeg" } as unknown as Blob);
-  const res = await fetch(`${API}/api/documents/scan`, {
+  form.append("file", new File(uri));
+  const res = await expoFetch(`${API}/api/documents/scan`, {
     method: "POST",
     headers: { Authorization: token ? `Bearer ${token}` : "" },
     body: form,
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const text = await res.text();
+    let message = text || res.statusText;
+    try {
+      const body = JSON.parse(text) as { detail?: unknown };
+      if (typeof body.detail === "string" && body.detail) message = body.detail;
+    } catch {
+      /* use raw body */
+    }
+    throw new Error(message);
+  }
   return res.json();
 }
 

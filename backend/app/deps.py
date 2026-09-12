@@ -1,25 +1,47 @@
+from functools import lru_cache
 from typing import Any
 
 import jwt
 from fastapi import Depends, Header, HTTPException
+from jwt import PyJWKClient
 
-from app.config import SUPABASE_JWT_SECRET
+from app.config import SUPABASE_JWT_SECRET, SUPABASE_URL
 from app.db import supabase
+
+
+@lru_cache(maxsize=1)
+def _jwks_client() -> PyJWKClient:
+    if not SUPABASE_URL:
+        raise HTTPException(status_code=500, detail="SUPABASE_URL is not set")
+    return PyJWKClient(f"{SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json")
+
+
+def _decode_access_token(token: str) -> dict[str, Any]:
+    try:
+        signing_key = _jwks_client().get_signing_key_from_jwt(token)
+        return jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["ES256", "RS256"],
+            audience="authenticated",
+        )
+    except jwt.PyJWTError:
+        if not SUPABASE_JWT_SECRET:
+            raise
+        return jwt.decode(
+            token,
+            SUPABASE_JWT_SECRET,
+            algorithms=["HS256"],
+            audience="authenticated",
+        )
 
 
 def get_user_id(authorization: str | None = Header(default=None)) -> str:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing bearer token")
     token = authorization.split(" ", 1)[1]
-    if not SUPABASE_JWT_SECRET:
-        raise HTTPException(status_code=500, detail="SUPABASE_JWT_SECRET is not set")
     try:
-        payload = jwt.decode(
-            token,
-            SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
+        payload = _decode_access_token(token)
     except jwt.PyJWTError as exc:
         raise HTTPException(status_code=401, detail="Invalid token") from exc
     user_id = payload.get("sub")

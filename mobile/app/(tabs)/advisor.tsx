@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ScreenTitle } from "../../src/components/Logo";
 import { chat, simulatePurchase } from "../../src/lib/api";
 import { colors, shadow } from "../../src/theme";
 
@@ -38,7 +39,7 @@ export default function AdvisorScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: 20, paddingTop: 64, paddingBottom: 40 }}>
-      <Text style={styles.title}>Advisor</Text>
+      <ScreenTitle title="Advisor" />
       <Text style={styles.sub}>Anchor checks a purchase. Compass explains a concept. Both use the same runway numbers.</Text>
 
       <View style={styles.switcher}>

@@ -5,7 +5,8 @@ python-dotenv
 pydantic
 PyJWT
 supabase
-anthropic
+google-genai
 python-multipart
 pillow
 pytesseract
+pymupdf

@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ScreenTitle } from "../../src/components/Logo";
 import { chat, horizonSimulate } from "../../src/lib/api";
 import { colors, shadow } from "../../src/theme";
 
@@ -29,7 +30,7 @@ export default function LearnScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: 20, paddingTop: 56 }}>
-      <Text style={styles.title}>Learn & Grow</Text>
+      <ScreenTitle title="Learn & Grow" />
       <Text style={styles.sub}>Compass explains. Horizon simulates. Camera is this flow, not a tab.</Text>
 
       <Pressable style={[styles.scan, shadow]} onPress={() => router.push("/scan")}>

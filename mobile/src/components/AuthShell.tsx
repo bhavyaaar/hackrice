@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Logo } from "./Logo";
 import { colors, shadow } from "../theme";
 
 export function AuthShell({
@@ -29,7 +30,10 @@ export function AuthShell({
         contentContainerStyle={styles.scroll}
       >
         <View style={styles.header}>
-          <Text style={styles.brand}>✦ Northstar</Text>
+          <View style={styles.brandRow}>
+            <Logo size={44} />
+            <Text style={styles.brand}>northstar</Text>
+          </View>
           <Text style={styles.title}>{title}</Text>
           {subtitle ? <Text style={styles.sub}>{subtitle}</Text> : null}
         </View>
@@ -48,7 +52,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingBottom: 56,
   },
-  brand: { color: colors.mint, fontWeight: "700", marginBottom: 10 },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
+  brand: { color: colors.mint, fontWeight: "700", fontSize: 18, letterSpacing: 0.6 },
   title: { color: "#fff", fontSize: 32, fontWeight: "800" },
   sub: { color: colors.mint, marginTop: 8, lineHeight: 20 },
   card: {

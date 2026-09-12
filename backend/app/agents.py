@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any, Literal
 
-from app.config import ANTHROPIC_API_KEY
+from app.config import GEMINI_API_KEY
 from app.db import supabase
+from app.llm import generate
 
 AgentName = Literal["compass", "horizon", "anchor"]
 
@@ -45,22 +46,11 @@ def _mark_concept(student_id: str, concept_name: str) -> None:
     ).execute()
 
 
-def _claude(agent: AgentName, student_state: dict[str, Any], message: str) -> str:
-    import anthropic
-
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    res = client.messages.create(
-        model="claude-sonnet-4-5",
-        max_tokens=400,
+def _gemini(agent: AgentName, student_state: dict[str, Any], message: str) -> str:
+    return generate(
+        f"student-state:\n{json.dumps(student_state, default=str)}\n\nUser: {message}",
         system=PROMPTS[agent],
-        messages=[
-            {
-                "role": "user",
-                "content": f"student-state:\n{json.dumps(student_state, default=str)}\n\nUser: {message}",
-            }
-        ],
     )
-    return res.content[0].text
 
 
 def _fallback(agent: AgentName, student_state: dict[str, Any], message: str) -> str:
@@ -91,7 +81,7 @@ def _fallback(agent: AgentName, student_state: dict[str, Any], message: str) -> 
 
 
 def run_agent(agent: AgentName, student: dict[str, Any], student_state: dict[str, Any], message: str) -> dict[str, Any]:
-    text = _claude(agent, student_state, message) if ANTHROPIC_API_KEY else _fallback(agent, student_state, message)
+    text = _gemini(agent, student_state, message) if GEMINI_API_KEY else _fallback(agent, student_state, message)
     _write_state(student["id"], agent, "last_reply", {"message": message, "reply": text})
     if agent == "compass" and "subsidized" in text.lower():
         _mark_concept(student["id"], "subsidized_vs_unsubsidized")

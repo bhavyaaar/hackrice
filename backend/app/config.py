@@ -7,9 +7,11 @@ ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
-NESSIE_BASE = os.getenv("NESSIE_BASE", "http://api.nessieisreal.com").rstrip("/")
+NESSIE_BASE = os.getenv("NESSIE_BASE", "https://api.nessieisreal.com").rstrip("/")
 NESSIE_API_KEY = os.getenv("NESSIE_API_KEY", "").strip()
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash").strip()
+GOOGLE_VISION_API_KEY = os.getenv("GOOGLE_VISION_API_KEY", "").strip()
 DISBURSEMENT_MULTIPLIER = float(os.getenv("DISBURSEMENT_MULTIPLIER", "2.5"))
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()

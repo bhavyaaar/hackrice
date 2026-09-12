@@ -39,7 +39,7 @@ Tabs: Dashboard · Scan · Finances · Advisor · Profile.
 
 ## Agents
 
-The phone never talks to Claude. FastAPI loads `/api/student-state`, then:
+The phone never talks to Gemini. FastAPI loads `/api/student-state`, then:
 
 - `POST /api/agents/anchor/chat` — Plan tab + after simulate-purchase
 - `POST /api/agents/horizon/chat` and `/api/agents/horizon/simulate` — Learn

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ScreenTitle } from "../../src/components/Logo";
 import { horizonSimulate, studentState, type StudentState } from "../../src/lib/api";
 import { colors, shadow } from "../../src/theme";
 
@@ -27,7 +28,7 @@ export default function FinancesScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: 20, paddingTop: 64, paddingBottom: 40 }}>
-      <Text style={styles.title}>Finances</Text>
+      <ScreenTitle title="Finances" />
       <Text style={styles.sub}>Horizon — loans, runway, extra payments</Text>
 
       <View style={[styles.card, shadow]}>

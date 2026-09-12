@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Logo } from "../../src/components/Logo";
 import { bootstrap, studentState, type StudentState } from "../../src/lib/api";
 import { colors, shadow } from "../../src/theme";
 
@@ -42,11 +43,7 @@ export default function HomeScreen() {
     >
       <View style={styles.top}>
         <View style={styles.brand}>
-          <Image
-            source={require("../../assets/northstar-mascot.png")}
-            style={styles.mascot}
-            resizeMode="cover"
-          />
+          <Logo size={48} />
           <View>
             <Text style={styles.logo}>northstar</Text>
             <Text style={styles.tagline}>navigate your student finances</Text>
@@ -130,7 +127,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   top: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
   brand: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
-  mascot: { width: 48, height: 48, borderRadius: 24 },
   logo: { color: colors.green, fontWeight: "800", fontSize: 20 },
   tagline: { color: colors.mute, marginTop: 2, fontSize: 13 },
   avatar: {

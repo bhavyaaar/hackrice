@@ -1,5 +1,6 @@
 import { Redirect, Tabs } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
+import { Logo } from "../../src/components/Logo";
 import { CameraIcon, DollarIcon, HouseIcon, PersonIcon, StarIcon } from "../../src/components/TabIcons";
 import { useAuth } from "../../src/lib/auth";
 import { colors } from "../../src/theme";
@@ -8,8 +9,9 @@ export default function TabsLayout() {
   const { session, loading } = useAuth();
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", backgroundColor: colors.bg }}>
-        <ActivityIndicator color={colors.green} />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0E1F18", gap: 16 }}>
+        <Logo size={96} />
+        <ActivityIndicator color={colors.mint} />
       </View>
     );
   }
@@ -70,6 +72,7 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="learn" options={{ href: null }} />
     </Tabs>
   );
 }

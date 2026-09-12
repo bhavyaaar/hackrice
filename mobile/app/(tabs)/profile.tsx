@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ScreenTitle } from "../../src/components/Logo";
 import { supabase } from "../../src/lib/supabase";
 import { colors, shadow } from "../../src/theme";
 
@@ -12,7 +13,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>Profile</Text>
+      <ScreenTitle title="Profile" />
       <View style={[styles.card, shadow]}>
         <Text style={styles.kicker}>Signed in</Text>
         <Text style={styles.email}>{email ?? "—"}</Text>

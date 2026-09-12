@@ -6,6 +6,12 @@
     "orientation": "portrait",
     "scheme": "northstar",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0E1F18"
+    },
     "plugins": [
       "expo-router",
       "expo-secure-store",
@@ -16,6 +22,13 @@
           "cameraPermission": "Northstar uses the camera to scan your award letter."
         }
       ],
+      "expo-document-picker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Northstar uses the camera to scan financial aid documents."
+        }
+      ],
       "expo-asset",
       "expo-font"
     ],
@@ -24,7 +37,11 @@
       "bundleIdentifier": "app.northstar.mobile"
     },
     "android": {
-      "package": "app.northstar.mobile"
+      "package": "app.northstar.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0E1F18"
+      }
     }
   }
 }

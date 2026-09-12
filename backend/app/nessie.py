@@ -16,8 +16,11 @@ def _params() -> dict[str, str]:
 
 
 def _unwrap(payload: Any) -> Any:
-    if isinstance(payload, dict) and "object" in payload and len(payload) <= 3:
-        return payload["object"]
+    if not isinstance(payload, dict):
+        return payload
+    for key in ("objectCreated", "object"):
+        if key in payload:
+            return payload[key]
     return payload
 
 
