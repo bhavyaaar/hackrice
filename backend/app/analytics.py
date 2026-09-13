@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from statistics import median
@@ -67,6 +68,20 @@ def detect_cadence(deposits: list[dict[str, Any]], today: date | None = None) ->
     }
 
 
+def effective_balance(
+    account: dict[str, Any],
+    deposits: list[dict[str, Any]],
+    purchases: list[dict[str, Any]],
+) -> float:
+    """Nessie often leaves account.balance at the opening amount. Rebuild from the ledger."""
+    listed = float(account.get("balance") or 0)
+    inflow = sum(float(row.get("amount") or 0) for row in deposits)
+    outflow = sum(float(row.get("amount") or 0) for row in purchases)
+    if inflow > 0 and listed < inflow * 0.25:
+        return round(max(listed + inflow - outflow, 0), 2)
+    return round(max(listed, 0), 2)
+
+
 def average_daily_spend(purchases: list[dict[str, Any]], bills: list[dict[str, Any]], today: date | None = None) -> float:
     today = today or date.today()
     window_start = today - timedelta(days=30)
@@ -80,22 +95,61 @@ def average_daily_spend(purchases: list[dict[str, Any]], bills: list[dict[str, A
     return round(total / 30.0, 2)
 
 
-def spending_by_category(purchases: list[dict[str, Any]]) -> dict[str, float]:
+def _purchase_category(description: str) -> str:
+    desc = (description or "other").lower()
+    rules: tuple[tuple[str, tuple[str, ...]], ...] = (
+        ("food_delivery", ("doordash", "uber eats", "grubhub", "chipotle", "dining", "restaurant", "pizza", "dinner")),
+        ("coffee", ("starbucks", "dunkin", "coffee", "cafe")),
+        ("groceries", ("heb", "kroger", "trader joe", "grocery", "walmart", "whole foods")),
+        ("nightlife", ("bar", "club", "nightlife", "concert")),
+        ("rideshare", ("uber", "lyft", "ride", "metro", "bus")),
+        ("subscriptions", ("spotify", "netflix", "hulu", "disney+", "apple music", "subscription")),
+        ("phone", ("verizon", "t-mobile", "at&t", "cricket", "phone bill")),
+        ("gym", ("gym", "planet fitness", "rec center")),
+        ("campus_bookstore", ("book", "chegg", "course materials")),
+        ("clothes", ("nike", "h&m", "zara", "uniqlo", "clothing", "thrift")),
+    )
+    for key, words in rules:
+        if any(word in desc for word in words):
+            return key
+    return "other"
+
+
+def spending_by_category(
+    purchases: list[dict[str, Any]],
+    today: date | None = None,
+    window_days: int = 30,
+) -> dict[str, float]:
+    today = today or date.today()
+    window_start = today - timedelta(days=window_days)
     buckets: dict[str, float] = defaultdict(float)
     for purchase in purchases:
-        desc = (purchase.get("description") or "other").lower()
-        if any(word in desc for word in ("uber", "lyft", "ride")):
-            key = "rideshare"
-        elif any(word in desc for word in ("doordash", "uber eats", "food", "dining", "chipotle")):
-            key = "food_delivery"
-        elif any(word in desc for word in ("spotify", "netflix", "hulu", "subscription")):
-            key = "subscriptions"
-        elif "book" in desc:
-            key = "campus_bookstore"
-        else:
-            key = "other"
+        when = _tx_date(purchase, "purchase_date", "transaction_date")
+        if when and when < window_start:
+            continue
+        key = _purchase_category(str(purchase.get("description") or "other"))
         buckets[key] += float(purchase.get("amount") or 0)
     return {k: round(v, 2) for k, v in buckets.items()}
+
+
+def next_recurring_date(day_of_month: int | None, today: date | None = None) -> date | None:
+    today = today or date.today()
+    if not day_of_month:
+        return None
+    day = int(day_of_month)
+    if day < 1:
+        return None
+
+    def clamp(year: int, month: int) -> date:
+        last = calendar.monthrange(year, month)[1]
+        return date(year, month, min(day, last))
+
+    candidate = clamp(today.year, today.month)
+    if candidate >= today:
+        return candidate
+    if today.month == 12:
+        return clamp(today.year + 1, 1)
+    return clamp(today.year, today.month + 1)
 
 
 def runway(

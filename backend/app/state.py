@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from app import analytics, nessie
 from app.db import supabase
+from app.profile import merge_profile
 
 
 def _loan_summary(student_id: str) -> dict[str, Any] | None:
@@ -35,7 +37,7 @@ def build_student_state(student: dict[str, Any]) -> dict[str, Any]:
     deposits = nessie.list_deposits(account_id)
     purchases = nessie.list_purchases(account_id)
     bills = nessie.list_bills(account_id)
-    balance = float(account.get("balance") or 0)
+    balance = analytics.effective_balance(account, deposits, purchases)
 
     cadence = analytics.detect_cadence(deposits)
     avg_daily = analytics.average_daily_spend(purchases, bills)
@@ -63,18 +65,36 @@ def build_student_state(student: dict[str, Any]) -> dict[str, Any]:
         "spending_by_category": analytics.spending_by_category(purchases),
         "loan_summary": _loan_summary(student["id"]),
         "concepts_understood": _concepts(student["id"]),
-        "profile_flags": student.get("profile_flags") or {},
-        "upcoming_bills": [
-            {
-                "payee": b.get("payee") or b.get("nickname"),
-                "amount": b.get("payment_amount"),
-                "recurring_date": b.get("recurring_date"),
-            }
-            for b in bills
-        ],
+        "profile_flags": merge_profile(student.get("profile_flags")),
+        "display_name": str(merge_profile(student.get("profile_flags")).get("full_name") or "").strip(),
+        "upcoming_bills": _upcoming_bills(bills),
         "balance_series": series,
         "safe_to_spend": _safe_to_spend(balance, avg_daily, cadence["days_until_next_disbursement"]),
     }
+
+
+def _upcoming_bills(bills: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    today = date.today()
+    rows: list[dict[str, Any]] = []
+    for bill in bills:
+        recurring = bill.get("recurring_date")
+        due = None
+        try:
+            if recurring not in (None, ""):
+                due = analytics.next_recurring_date(int(recurring), today)
+        except (TypeError, ValueError):
+            due = None
+        rows.append(
+            {
+                "payee": bill.get("payee") or bill.get("nickname"),
+                "amount": bill.get("payment_amount"),
+                "recurring_date": recurring,
+                "next_due": due.isoformat() if due else None,
+                "days_until": (due - today).days if due else None,
+            }
+        )
+    rows.sort(key=lambda row: row.get("next_due") or "9999-12-31")
+    return rows
 
 
 def _safe_to_spend(balance: float, avg_daily: float, days_until: int | None) -> float:
@@ -99,7 +119,8 @@ def empty_state(student: dict[str, Any]) -> dict[str, Any]:
         "spending_by_category": {},
         "loan_summary": _loan_summary(student["id"]),
         "concepts_understood": _concepts(student["id"]),
-        "profile_flags": student.get("profile_flags") or {},
+        "profile_flags": merge_profile(student.get("profile_flags")),
+        "display_name": str(merge_profile(student.get("profile_flags")).get("full_name") or "").strip(),
         "upcoming_bills": [],
         "balance_series": [],
         "safe_to_spend": 0,

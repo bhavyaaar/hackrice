@@ -35,7 +35,7 @@ def simulate_purchase(body: SimulatePurchaseBody, student: dict[str, Any] = Depe
     state = build_student_state(student)
     message = (
         f"I just spent ${body.amount:.2f} on {body.description}. "
-        "How does this change my runway?"
+        "How does this change my cash until the next aid drop?"
     )
     agent = run_agent("anchor", student, state, message)
     return {"purchase": purchase, **agent}

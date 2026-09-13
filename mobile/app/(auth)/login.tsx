@@ -19,7 +19,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <AuthShell title="Login Account" subtitle="Pick up your runway where you left off.">
+    <AuthShell title="Login Account" subtitle="Pick up where you left off.">
       <AuthField
         placeholder="Email Address"
         value={email}

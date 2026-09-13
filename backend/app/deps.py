@@ -1,3 +1,4 @@
+import json
 from functools import lru_cache
 from typing import Any
 
@@ -36,7 +37,7 @@ def _decode_access_token(token: str) -> dict[str, Any]:
         )
 
 
-def get_user_id(authorization: str | None = Header(default=None)) -> str:
+def get_access_claims(authorization: str | None = Header(default=None)) -> dict[str, Any]:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing bearer token")
     token = authorization.split(" ", 1)[1]
@@ -47,7 +48,25 @@ def get_user_id(authorization: str | None = Header(default=None)) -> str:
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(status_code=401, detail="Token missing sub")
-    return user_id
+    meta = payload.get("user_metadata")
+    if isinstance(meta, str):
+        try:
+            meta = json.loads(meta)
+        except json.JSONDecodeError:
+            meta = {}
+    if not isinstance(meta, dict):
+        meta = {}
+    return {
+        "id": str(user_id),
+        "email": payload.get("email") or "",
+        "full_name": str(
+            meta.get("full_name") or meta.get("name") or payload.get("name") or payload.get("full_name") or ""
+        ).strip(),
+    }
+
+
+def get_user_id(claims: dict[str, Any] = Depends(get_access_claims)) -> str:
+    return claims["id"]
 
 
 def get_student(user_id: str = Depends(get_user_id)) -> dict[str, Any]:

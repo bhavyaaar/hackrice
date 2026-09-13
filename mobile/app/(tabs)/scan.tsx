@@ -39,6 +39,7 @@ export default function ScanTab() {
         params: {
           ocr: payload.ocr_text ?? "",
           extracted: JSON.stringify(payload.extracted ?? {}),
+          storagePath: payload.storage_path ?? "",
         },
       });
     } catch (err) {
@@ -89,7 +90,7 @@ export default function ScanTab() {
       <View style={styles.header}>
         <ScreenTitle title="Scan" />
         <Text style={styles.sub}>
-          Point the camera at a letter or bill, or upload a file. Cloud Vision reads it; Compass explains it against your runway.
+          Point the camera at a letter or bill, or upload a file. Cloud Vision reads it; Compass explains it against cash until next aid.
         </Text>
       </View>
 

@@ -11,6 +11,7 @@ NESSIE_BASE = os.getenv("NESSIE_BASE", "https://api.nessieisreal.com").rstrip("/
 NESSIE_API_KEY = os.getenv("NESSIE_API_KEY", "").strip()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash").strip()
+GEMINI_FALLBACK_MODEL = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-flash-latest").strip()
 GOOGLE_VISION_API_KEY = os.getenv("GOOGLE_VISION_API_KEY", "").strip()
 DISBURSEMENT_MULTIPLIER = float(os.getenv("DISBURSEMENT_MULTIPLIER", "2.5"))
 
