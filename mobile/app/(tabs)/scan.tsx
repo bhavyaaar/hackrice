@@ -90,7 +90,7 @@ export default function ScanTab() {
       <View style={styles.header}>
         <ScreenTitle title="Scan" />
         <Text style={styles.sub}>
-          Point the camera at a letter or bill, or upload a file. Cloud Vision reads it; Compass explains it against cash until next aid.
+          Point the camera at a letter or bill, or upload a file. Cloud Vision reads it; Compass explains it against your next paycheck or refund.
         </Text>
       </View>
 

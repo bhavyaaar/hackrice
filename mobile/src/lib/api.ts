@@ -1,8 +1,48 @@
+import Constants from "expo-constants";
 import { fetch as expoFetch } from "expo/fetch";
 import { File } from "expo-file-system";
+import { NativeModules } from "react-native";
 import { supabase } from "./supabase";
 
-const API = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000";
+function packagerHostname(): string | null {
+  const scriptURL = NativeModules.SourceCode?.scriptURL as string | undefined;
+  if (scriptURL) {
+    try {
+      const host = new URL(scriptURL).hostname;
+      if (isLanHost(host)) return host;
+    } catch {
+      /* ignore */
+    }
+  }
+  const hostUri = Constants.expoGoConfig?.debuggerHost || Constants.expoConfig?.hostUri || "";
+  const host = String(hostUri).split(":")[0];
+  return isLanHost(host) ? host : null;
+}
+
+function isLanHost(host: string) {
+  if (!host || host === "localhost" || host === "127.0.0.1") return false;
+  if (host.includes("exp.direct") || host.includes("ngrok") || host.includes("expo.dev")) return false;
+  return true;
+}
+
+function resolveApiBase() {
+  const configured = (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
+  try {
+    const url = new URL(configured);
+    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+      const host = packagerHostname();
+      if (host) {
+        url.hostname = host;
+        return url.origin;
+      }
+    }
+  } catch {
+    /* keep configured */
+  }
+  return configured;
+}
+
+const API = resolveApiBase();
 
 async function authHeaders(extra?: HeadersInit): Promise<HeadersInit> {
   const { data } = await supabase.auth.getSession();
@@ -18,7 +58,14 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     "Content-Type": "application/json",
     ...(init.headers ?? {}),
   });
-  const res = await fetch(`${API}${path}`, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API}${path}`, { ...init, headers });
+  } catch {
+    throw new Error(
+      `Can't reach the API at ${API}. Restart uvicorn with --host 0.0.0.0 and put the phone on the same network as the laptop (iPhone hotspot is most reliable).`,
+    );
+  }
   if (!res.ok) {
     const text = await res.text();
     let message = text || res.statusText;
@@ -240,6 +287,7 @@ export type StudentProfile = {
   notify_aid: boolean;
   anchor_nags_doordash: boolean;
   splits_rent: boolean;
+  handled_bills?: string[];
 };
 
 export type ProfilePayload = {
@@ -270,6 +318,24 @@ export type StudentState = {
   next_disbursement_date?: string | null;
   last_disbursement_date?: string | null;
   days_since_last_disbursement?: number | null;
+  upcoming_inflows?: {
+    id: string;
+    kind: string;
+    label: string;
+    date: string;
+    amount: number;
+    days_until: number;
+    cadence_days?: number;
+  }[];
+  next_inflow?: {
+    id: string;
+    kind: string;
+    label: string;
+    date: string;
+    amount: number;
+    days_until: number;
+    cadence_days?: number;
+  } | null;
   balance_series?: { date: string; balance: number; kind?: string }[];
   warning?: string;
 };

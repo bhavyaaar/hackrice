@@ -1,10 +1,11 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo } from "../../src/components/Logo";
-import { bootstrap, firstNameFrom, nameFromAccessToken, nameFromAuthUser, studentState, type StudentState } from "../../src/lib/api";
+import { bootstrap, firstNameFrom, nameFromAccessToken, nameFromAuthUser, studentState, updateProfile, type StudentState } from "../../src/lib/api";
 import {
+  campusHelp,
   categoryBars,
   initialsFrom,
   insightLine,
@@ -22,6 +23,7 @@ export default function HomeScreen() {
   const [state, setState] = useState<StudentState | null>(null);
   const [hello, setHello] = useState("Hi");
   const [error, setError] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
@@ -44,23 +46,53 @@ export default function HomeScreen() {
     load();
   }, []);
 
-  const linked = state != null && state.days_until_next_disbursement != null;
-  const balance = Number(state?.balance ?? 0);
-  const days = state?.days_until_next_disbursement;
-  const aidDate = prettyDate(state?.next_disbursement_date);
-  const offTrack = Boolean(state?.runway_shortfall_date);
   const spend = todaySpendable(state);
+  const linked = state != null && (state.days_until_next_disbursement != null || (state.upcoming_inflows?.length ?? 0) > 0);
+  const balance = Number(state?.balance ?? 0);
+  const days = spend?.days ?? state?.days_until_next_disbursement;
+  const aidDate = prettyDate(state?.next_inflow?.date || state?.next_disbursement_date);
+  const offTrack = Boolean(state?.runway_shortfall_date);
   const bars = categoryBars(state);
   const insight = insightLine(state);
-  const upcoming = upcomingRows(state, state?.profile_flags).slice(0, 4);
+  const upcoming = upcomingRows(state, state?.profile_flags).slice(0, 8);
   const chart = sparkPoints(state);
   const chips = spendChips(spend?.today ?? null);
   const initials = initialsFrom(hello, state?.display_name);
   const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 
+  const help = campusHelp(state?.profile_flags?.school);
+  const blocking = spend?.blocking?.[0] ?? null;
+
   function askAmount(amount: number) {
-    const q = `Can I spend $${amount.toFixed(2)} right now and still make it to my next aid drop?`;
+    const target = spend?.aidLabel || "the next paycheck or refund";
+    const q = `Can I spend $${amount.toFixed(2)} right now and still make it to ${target}?`;
     router.push({ pathname: "/(tabs)/advisor", params: { q, agent: "anchor" } });
+  }
+
+  async function markBillCovered(key: string) {
+    setBusyAction(true);
+    try {
+      const current = state?.profile_flags?.handled_bills ?? [];
+      if (!current.includes(key)) {
+        await updateProfile({ handled_bills: [...current, key] });
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update that bill");
+    } finally {
+      setBusyAction(false);
+    }
+  }
+
+  function askForHelp() {
+    const bill = blocking ? `${blocking.payee} ($${Math.round(blocking.amount)}) is due before ${spend?.aidLabel}` : `I have $0 to spend until ${spend?.aidLabel || "the next paycheck"}`;
+    router.push({
+      pathname: "/(tabs)/advisor",
+      params: {
+        q: `${bill}. What can I do besides freeze spending — delay a bill, emergency aid, or a campus pantry?`,
+        agent: "compass",
+      },
+    });
   }
 
   return (
@@ -119,7 +151,7 @@ export default function HomeScreen() {
           ) : null}
           <View style={styles.trackLabels}>
             <Text style={styles.trackLabel}>Today</Text>
-            <Text style={styles.trackLabel}>{aidDate || "Next aid"}</Text>
+            <Text style={styles.trackLabel}>{spend?.kindLabel || aidDate || "Next cash"}</Text>
           </View>
           <View style={styles.heroChips}>
             {chips.map((amount) => (
@@ -137,8 +169,35 @@ export default function HomeScreen() {
           <Text style={styles.heroSub}>
             {spend && spend.reserved > 0
               ? `Bills due before ${spend.aidLabel} already claim this stretch.`
-              : `Spending today means missing ${spend?.aidLabel || aidDate || "next aid"}.`}
+              : `Spending today means missing ${spend?.aidLabel || aidDate || "the next paycheck"}.`}
           </Text>
+          {blocking ? (
+            <View style={styles.offBill}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.offBillName}>{blocking.payee}</Text>
+                <Text style={styles.offBillMeta}>${Math.round(blocking.amount).toLocaleString()} held · already paid another way?</Text>
+              </View>
+              <Pressable
+                style={styles.offBillBtn}
+                disabled={busyAction}
+                onPress={() => void markBillCovered(blocking.key)}
+              >
+                <Text style={styles.offBillBtnText}>{busyAction ? "…" : "Covered"}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          <Pressable style={[styles.lightCta, { backgroundColor: "#F8E8E4" }]} onPress={askForHelp}>
+            <Text style={[styles.lightCtaText, { color: "#4A2A24" }]}>Ask Compass what I can do</Text>
+          </Pressable>
+          <View style={styles.offLinks}>
+            <Pressable onPress={() => void Linking.openURL(help.emergency.url)}>
+              <Text style={styles.offLink}>{help.emergency.label}</Text>
+            </Pressable>
+            <Text style={styles.offDot}>·</Text>
+            <Pressable onPress={() => void Linking.openURL(help.pantry.url)}>
+              <Text style={styles.offLink}>{help.pantry.label}</Text>
+            </Pressable>
+          </View>
         </View>
       )}
 
@@ -150,7 +209,18 @@ export default function HomeScreen() {
             value={`$${Math.round(spend?.reserved ?? 0).toLocaleString()}`}
             warn={(spend?.reserved ?? 0) > 0 && (spend?.today ?? 0) === 0}
           />
-          <Stat label="To aid" value={days != null ? `${days}d` : "—"} />
+          <Stat
+            label={
+              spend?.kind === "work_study"
+                ? "To paycheck"
+                : spend?.kind === "pell"
+                  ? "To Pell"
+                  : spend?.kind === "scholarship"
+                    ? "To scholarship"
+                    : "To refund"
+            }
+            value={days != null ? `${days}d` : "—"}
+          />
         </View>
       ) : null}
 
@@ -184,7 +254,7 @@ export default function HomeScreen() {
           </Text>
         </View>
         {upcoming.length === 0 ? (
-          <Text style={styles.mute}>Bills and aid dates appear after checking is linked.</Text>
+          <Text style={styles.mute}>Paychecks, refunds, and bills show up after checking is linked.</Text>
         ) : (
           upcoming.map((row) => (
             <View key={row.id} style={styles.billRow}>
@@ -295,6 +365,22 @@ const styles = StyleSheet.create({
   heroInsight: { color: "#D8F0E3", marginTop: 14, lineHeight: 20, fontWeight: "600" },
   lightCta: { marginTop: 16, backgroundColor: "#fff", borderRadius: 16, paddingVertical: 12, alignItems: "center" },
   lightCtaText: { color: "#16382C", fontWeight: "800" },
+  offBill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 16,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 16,
+    padding: 12,
+  },
+  offBillName: { color: "#fff", fontWeight: "800" },
+  offBillMeta: { color: "#F3C0B6", marginTop: 2, fontSize: 12, fontWeight: "600" },
+  offBillBtn: { backgroundColor: "#fff", borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
+  offBillBtnText: { color: "#4A2A24", fontWeight: "800", fontSize: 13 },
+  offLinks: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 14 },
+  offLink: { color: "#F3C0B6", fontWeight: "700", fontSize: 13, textDecorationLine: "underline" },
+  offDot: { color: "rgba(243,192,182,0.5)", fontWeight: "700" },
   statRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
   stat: { flex: 1, backgroundColor: colors.card, borderRadius: 18, paddingVertical: 14, paddingHorizontal: 12 },
   statValue: { fontSize: 18, fontWeight: "800", color: colors.ink },

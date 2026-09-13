@@ -29,6 +29,7 @@ class ProfileUpdate(BaseModel):
     notify_aid: bool | None = None
     anchor_nags_doordash: bool | None = None
     splits_rent: bool | None = None
+    handled_bills: list[str] | None = None
 
 
 def _persist_flags(student: dict[str, Any], flags: dict[str, Any]) -> dict[str, Any]:

@@ -18,6 +18,7 @@ PROFILE_DEFAULTS: dict[str, Any] = {
     "notify_aid": True,
     "anchor_nags_doordash": True,
     "splits_rent": False,
+    "handled_bills": [],
 }
 
 PROFILE_KEYS = tuple(PROFILE_DEFAULTS.keys())
@@ -26,6 +27,10 @@ PROFILE_KEYS = tuple(PROFILE_DEFAULTS.keys())
 def merge_profile(flags: Any) -> dict[str, Any]:
     incoming = flags if isinstance(flags, dict) else {}
     merged = {**PROFILE_DEFAULTS, **incoming}
+    bills = merged.get("handled_bills") or []
+    if not isinstance(bills, list):
+        bills = []
+    merged["handled_bills"] = [str(item) for item in bills if str(item).strip()]
     return {key: merged[key] for key in PROFILE_KEYS}
 
 

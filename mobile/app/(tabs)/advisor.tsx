@@ -190,7 +190,7 @@ function AnchorReply({ card }: { card: AnchorCard }) {
         {card.days_to_aid != null ? (
           <View style={styles.fact}>
             <Text style={styles.factValue}>{card.days_to_aid}d</Text>
-            <Text style={styles.factLabel}>To next aid</Text>
+            <Text style={styles.factLabel}>To next cash</Text>
           </View>
         ) : null}
       </View>

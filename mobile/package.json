@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "start": "expo start --clear",
+    "iphone": "ANDROID_HOME=\"$PWD/.android-stub\" ANDROID_SDK_ROOT=\"$PWD/.android-stub\" expo start --tunnel --clear",
     "ios": "expo start --ios",
     "android": "expo start --android"
   },

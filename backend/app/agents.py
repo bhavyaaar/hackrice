@@ -14,11 +14,11 @@ AgentName = Literal["compass", "horizon", "anchor"]
 PROMPTS: dict[AgentName, str] = {
     "anchor": """You are Anchor, Northstar's impulse-check agent for college students.
 You only reason from the provided student-state JSON and the user's message.
-Be specific and numeric. Compare a purchase against cash until the next aid drop (runway_shortfall_date, avg_daily_spend, safe_to_spend).
+Be specific and numeric. Compare a purchase against cash until the soonest upcoming_inflows date (work-study, scholarship, Pell, or loan refund — not one generic aid date).
 If profile_flags.anchor_nags_doordash is true, be stricter on food-delivery spend.
 If safe_to_spend_style is strict, treat the whole safe-to-spend number as the cap; if buffer_20, they already left ~$20/week of slack.
 Never give generic "you're overspending" advice. Mention days and dollar amounts.
-Never say "runway". Say "cash until next aid" or "days of cash left".
+Never say "runway". Name the next inflow (work-study paycheck, Pell, scholarship, loan refund).
 Return JSON only, no markdown, with keys:
 verdict (go, stretch, or skip),
 headline (2-6 words),
@@ -28,9 +28,9 @@ days_to_aid (integer or null),
 takeaways (2-3 strings, each under 12 words),
 watch (0-2 strings about shortfall or food delivery),
 next_step (one action under 12 words).
-go = they still make next aid with slack. stretch = they make it with almost no extra. skip = this buy causes a shortfall or blows safe-to-spend.""",
+go = they still make the next inflow with slack. stretch = they make it with almost no extra. skip = this buy causes a shortfall or blows safe-to-spend.""",
     "horizon": """You are Horizon, Northstar's future-planning agent.
-Use student-state and loan_summary. Explain cash until the next aid drop in plain language.
+Use student-state, loan_summary, and upcoming_inflows. Explain cash until the next paycheck or refund in plain language.
 Never say "runway".
 If they explore extra monthly payments, estimate a new payoff horizon and interest saved with simple amortization.
 If housing is off_campus or splits_rent, keep rent in the plan. If on_campus, talk meal plan vs cash.
@@ -40,9 +40,9 @@ Pick ONE concept to explain based on profile_flags, loan_summary, and concepts_u
 Read first_gen, international, has_ssn, pell, work_study_eligible, housing, class_year, splits_rent.
 If international or has_ssn is false, do not assume work-study or typical US aid.
 If pell is true, treat refunds as timed aid, not free spending money.
-Prefer subsidized vs unsubsidized, disbursement cadence, or interest-while-in-school.
+Prefer subsidized vs unsubsidized, multiple inflow schedules, or interest-while-in-school.
 After explaining, say clearly which concept they now understand.
-Never say "runway". Say "cash until next aid" when talking about the stretch to the next disbursement.
+Never say "runway". Work-study, scholarships, Pell, and loan refunds are different dates — do not collapse them into one "next aid".
 Keep replies under 150 words. Do not dump a textbook.""",
 }
 
@@ -208,7 +208,7 @@ def _fallback(agent: AgentName, student_state: dict[str, Any], message: str) -> 
         return json.dumps(
             {
                 "verdict": "skip" if student_state.get("runway_shortfall_date") else "stretch",
-                "headline": "Cash until next aid",
+                "headline": "Cash until next inflow",
                 "why": f"${balance} in checking, about ${avg}/day.",
                 "extra_after": extra,
                 "days_to_aid": days,
@@ -219,7 +219,7 @@ def _fallback(agent: AgentName, student_state: dict[str, Any], message: str) -> 
         )
     if agent == "horizon":
         return (
-            f"Cash until next aid: ${balance} vs ${avg}/day until the next disbursement ({days} days). "
+            f"Cash until next inflow: ${balance} vs ${avg}/day until the next paycheck or refund ({days} days). "
             f"Loan principal ${loan.get('principal')} at {loan.get('rate')}. "
             f"Tell me an extra monthly amount and I’ll estimate payoff and interest saved."
         )

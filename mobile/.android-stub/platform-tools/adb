@@ -1,0 +1,7 @@
+#!/bin/sh
+# Stub so Expo can start without a real Android SDK. iPhone / Expo Go does not use adb.
+if [ "$1" = "devices" ]; then
+  printf 'List of devices attached\n'
+  exit 0
+fi
+exit 0

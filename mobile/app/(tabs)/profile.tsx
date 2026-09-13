@@ -32,6 +32,7 @@ const EMPTY: StudentProfile = {
   notify_aid: true,
   anchor_nags_doordash: true,
   splits_rent: false,
+  handled_bills: [],
 };
 
 const YEARS: { id: ClassYear; label: string }[] = [

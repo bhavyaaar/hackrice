@@ -103,12 +103,52 @@ export function spendChips(cap: number | null) {
   return [...new Set(amounts)];
 }
 
+export function nextInflow(state: StudentState | null) {
+  const listed = state?.upcoming_inflows ?? [];
+  if (listed.length) return listed[0];
+  if (state?.next_inflow) return state.next_inflow;
+  if (!state?.next_disbursement_date) return null;
+  return {
+    id: "aid",
+    kind: "aid_refund",
+    label: "Aid refund",
+    date: state.next_disbursement_date,
+    amount: 0,
+    days_until: state.days_until_next_disbursement ?? daysUntil(state.next_disbursement_date) ?? 0,
+  };
+}
+
+export function billKey(bill: { payee?: string | null; next_due?: string | null }) {
+  const due = (bill.next_due || "").slice(0, 7);
+  return `${(bill.payee || "").trim().toLowerCase()}|${due}`;
+}
+
+export function isBillHandled(bill: { payee?: string | null; next_due?: string | null }, flags?: StudentProfile | null) {
+  return (flags?.handled_bills ?? []).includes(billKey(bill));
+}
+
+export function campusHelp(school?: string | null) {
+  const rice = !school || /rice/i.test(school);
+  if (rice) {
+    return {
+      emergency: { label: "Rice emergency aid", url: "https://wellbeing.rice.edu/basic-needs" },
+      pantry: { label: "The Hoot pantry", url: "https://wellbeing.rice.edu/the-hoot" },
+    };
+  }
+  return {
+    emergency: { label: "Campus emergency aid", url: "https://www.nasfaa.org/emergency_aid" },
+    pantry: { label: "Find a food pantry", url: "https://www.feedingamerica.org/find-your-local-foodbank" },
+  };
+}
+
 export function billsBeforeAid(state: StudentState | null) {
   const flags = state?.profile_flags;
-  const aid = state?.next_disbursement_date?.slice(0, 10);
-  const days = state?.days_until_next_disbursement;
+  const next = nextInflow(state);
+  const aid = next?.date?.slice(0, 10) || state?.next_disbursement_date?.slice(0, 10);
+  const days = next?.days_until ?? state?.days_until_next_disbursement;
   let reserved = 0;
   const names: string[] = [];
+  const blocking: { payee: string; amount: number; key: string; due?: string | null }[] = [];
   for (const bill of state?.upcoming_bills ?? []) {
     const due =
       bill.next_due?.slice(0, 10) ||
@@ -117,25 +157,38 @@ export function billsBeforeAid(state: StudentState | null) {
         .slice(0, 10);
     const beforeAid = aid && due ? due <= aid : bill.days_until != null && days != null ? bill.days_until <= days : true;
     if (!beforeAid) continue;
-    reserved += billAmount(bill, flags);
-    if (bill.payee) names.push(bill.payee);
+    const keyed = { ...bill, next_due: due };
+    if (isBillHandled(keyed, flags)) continue;
+    const amount = billAmount(bill, flags);
+    reserved += amount;
+    if (bill.payee) {
+      names.push(bill.payee);
+      blocking.push({ payee: bill.payee, amount, key: billKey(keyed), due });
+    }
   }
-  return { reserved, names };
+  blocking.sort((a, b) => b.amount - a.amount);
+  return { reserved, names, blocking };
 }
 
 export function todaySpendable(state: StudentState | null) {
-  const days = state?.days_until_next_disbursement;
+  const next = nextInflow(state);
+  const days = next?.days_until ?? state?.days_until_next_disbursement;
   if (days == null) return null;
-  const { reserved, names } = billsBeforeAid(state);
+  const { reserved, names, blocking } = billsBeforeAid(state);
   const leftover = Math.max(0, Number(state?.balance ?? 0) - reserved);
   const today = Math.max(0, Math.floor(leftover / Math.max(days, 1)));
+  const when = prettyDate(next?.date || state?.next_disbursement_date);
+  const kindLabel = next?.label || "next cash";
   return {
     today,
     leftover,
     reserved,
     days,
-    aidLabel: prettyDate(state?.next_disbursement_date) || "next aid",
+    kind: next?.kind ?? "aid_refund",
+    kindLabel,
+    aidLabel: when ? `${kindLabel} on ${when}` : kindLabel,
     billNames: names.slice(0, 2),
+    blocking,
     yes: today > 0,
   };
 }
@@ -169,7 +222,8 @@ export function offTrackBy(state: StudentState | null) {
 export function sparkPoints(state: StudentState | null, maxPoints = 28) {
   const series = state?.balance_series ?? [];
   const todayIso = new Date().toISOString().slice(0, 10);
-  const endIso = (state?.next_disbursement_date || state?.runway_shortfall_date || todayIso).slice(0, 10);
+  const lastInflow = (state?.upcoming_inflows ?? []).at(-1)?.date;
+  const endIso = (lastInflow || state?.next_disbursement_date || state?.runway_shortfall_date || todayIso).slice(0, 10);
   let window = series.filter((point) => point.date >= todayIso && point.date <= endIso);
   if (window.length < 2) {
     window = series.filter((point) => point.date >= todayIso).slice(0, 45);
@@ -205,17 +259,19 @@ export function upcomingRows(state: StudentState | null, flags?: StudentProfile)
     amountLabel: string;
     icon: string;
     kind: "aid" | "bill";
+    sort: string;
   }[] = [];
 
-  if (state?.next_disbursement_date) {
-    const days = state.days_until_next_disbursement ?? daysUntil(state.next_disbursement_date);
+  const inflows = state?.upcoming_inflows?.length ? state.upcoming_inflows : nextInflow(state) ? [nextInflow(state)!] : [];
+  for (const inflow of inflows) {
     rows.push({
-      id: "aid",
-      title: "Next aid",
-      subtitle: prettyDate(state.next_disbursement_date),
-      amountLabel: days != null ? `${days}d` : "—",
-      icon: "↓",
+      id: inflow.id,
+      title: inflow.label,
+      subtitle: prettyDate(inflow.date),
+      amountLabel: inflow.amount > 0 ? `$${Math.round(inflow.amount).toLocaleString()}` : "—",
+      icon: inflow.kind === "work_study" ? "⏱" : "↓",
       kind: "aid",
+      sort: inflow.date.slice(0, 10),
     });
   }
 
@@ -227,17 +283,19 @@ export function upcomingRows(state: StudentState | null, flags?: StudentProfile)
       nextDueFromRecurring(typeof bill.recurring_date === "number" ? bill.recurring_date : Number(bill.recurring_date))
         ?.toISOString()
         .slice(0, 10);
+    const handled = isBillHandled({ payee: bill.payee, next_due: due }, flags);
     rows.push({
       id: `${bill.payee}-${due ?? bill.recurring_date}`,
       title: bill.payee,
-      subtitle: [due ? prettyDate(due) : null, split ? "your half" : null].filter(Boolean).join(" · ") || "Bill",
+      subtitle: [due ? prettyDate(due) : null, split ? "your half" : null, handled ? "covered" : null].filter(Boolean).join(" · ") || "Bill",
       amountLabel: `$${amount.toFixed(2)}`,
       icon: /netflix|spotify/i.test(bill.payee) ? "▶" : "⌂",
       kind: "bill",
+      sort: (due || "9999-12-31").slice(0, 10),
     });
   }
 
-  return rows;
+  return rows.sort((a, b) => a.sort.localeCompare(b.sort));
 }
 
 export function billAmount(bill: { payee: string; amount: number }, flags?: StudentProfile) {

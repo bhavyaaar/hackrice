@@ -43,15 +43,24 @@ export default function ScanResultScreen() {
 
   const docType = prettyType(parsed.document_type);
   const headline = typeof parsed.headline === "string" && parsed.headline.trim() ? parsed.headline.trim() : docType;
-  const meaning =
-    typeof parsed.what_it_means === "string" && parsed.what_it_means.trim()
-      ? parsed.what_it_means.trim()
-      : typeof parsed.explanation === "string"
-        ? parsed.explanation
-        : null;
+  const whatItMeans =
+    typeof parsed.what_it_means === "string" && parsed.what_it_means.trim() ? parsed.what_it_means.trim() : "";
+  const banking = parsed.banking_impact && typeof parsed.banking_impact === "object" ? (parsed.banking_impact as Record<string, unknown>) : null;
+  const bankingPara = typeof banking?.paragraph === "string" ? banking.paragraph.trim() : "";
+  const story = typeof parsed.banking_story === "string" ? parsed.banking_story.trim() : "";
+  const meaning = whatItMeans || story || (typeof parsed.explanation === "string" ? parsed.explanation : null);
+  const showBankingBody = Boolean(bankingPara && bankingPara !== meaning);
   const takeaways = asList(parsed.takeaways);
   const warnings = asList(parsed.warnings);
   const nextStep = typeof parsed.next_step === "string" ? parsed.next_step.trim() : "";
+  const nextAmt = money(banking?.next_deposit_amount);
+  const nextName = typeof banking?.next_deposit === "string" && banking.next_deposit.trim() ? banking.next_deposit : "Next cash";
+  const bankFacts = [
+    { label: "In checking", value: money(banking?.checking) },
+    { label: "Held for bills", value: money(banking?.bills_held) },
+    { label: nextAmt ? nextName : "Next cash", value: nextAmt || nextName },
+    { label: "Safe per day", value: money(banking?.today) },
+  ].filter((row) => row.value && row.value !== "Next cash");
   const facts = [
     { label: "Cost of attendance", value: money(parsed.total_cost_of_attendance) },
     { label: "Grants", value: money(parsed.grants_amount) },
@@ -88,7 +97,7 @@ export default function ScanResultScreen() {
         <Text style={styles.back}>← Back</Text>
       </Pressable>
       <Text style={styles.title}>Scan complete</Text>
-      <Text style={styles.sub}>Here’s what Compass found</Text>
+      <Text style={styles.sub}>Compass mapped this letter onto your checking</Text>
 
       <View style={[styles.card, shadow]}>
         <View style={styles.cardHead}>
@@ -98,6 +107,21 @@ export default function ScanResultScreen() {
           </View>
         </View>
         {meaning ? <Text style={styles.meaning}>{meaning}</Text> : null}
+
+        {bankFacts.length ? (
+          <>
+            <Text style={styles.section}>Vs your checking</Text>
+            <View style={styles.factGrid}>
+              {bankFacts.map((fact) => (
+                <View key={fact.label} style={styles.fact}>
+                  <Text style={styles.factValue}>{fact.value}</Text>
+                  <Text style={styles.factLabel}>{fact.label}</Text>
+                </View>
+              ))}
+            </View>
+            {showBankingBody ? <Text style={styles.bankBody}>{bankingPara}</Text> : null}
+          </>
+        ) : null}
 
         {facts.length ? (
           <>
@@ -115,7 +139,7 @@ export default function ScanResultScreen() {
 
         {takeaways.length ? (
           <>
-            <Text style={styles.section}>What this means</Text>
+            <Text style={styles.section}>How it hits your account</Text>
             {takeaways.map((item) => (
               <View key={item} style={styles.bulletRow}>
                 <Text style={styles.dot}>•</Text>
@@ -178,7 +202,8 @@ const styles = StyleSheet.create({
   headline: { flex: 1, fontSize: 22, fontWeight: "800", color: colors.ink },
   badge: { backgroundColor: colors.greenSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
   badgeText: { color: colors.green, fontWeight: "700", fontSize: 11, textTransform: "capitalize" },
-  meaning: { color: colors.mute, marginTop: 10, lineHeight: 20 },
+  meaning: { color: colors.ink, marginTop: 10, lineHeight: 22, fontWeight: "600" },
+  bankBody: { color: colors.mute, marginTop: 12, lineHeight: 21 },
   section: { fontWeight: "800", color: colors.ink, marginTop: 18, marginBottom: 8 },
   factGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   fact: {

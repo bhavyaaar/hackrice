@@ -49,6 +49,7 @@ def build_student_state(student: dict[str, Any]) -> dict[str, Any]:
         avg_daily=avg_daily,
         shortfall_date=run["runway_shortfall_date"],
         next_disbursement=cadence["next_disbursement_date"],
+        upcoming_inflows=cadence.get("upcoming_inflows") or [],
     )
 
     return {
@@ -59,6 +60,8 @@ def build_student_state(student: dict[str, Any]) -> dict[str, Any]:
         "days_until_next_disbursement": cadence["days_until_next_disbursement"],
         "last_disbursement_date": cadence["last_disbursement_date"],
         "next_disbursement_date": cadence["next_disbursement_date"],
+        "upcoming_inflows": cadence.get("upcoming_inflows") or [],
+        "next_inflow": cadence.get("next_inflow"),
         "cadence_days": cadence["cadence_days"],
         "projected_balance_at_next_disbursement": run["projected_balance_at_next_disbursement"],
         "runway_shortfall_date": run["runway_shortfall_date"],
@@ -113,6 +116,8 @@ def empty_state(student: dict[str, Any]) -> dict[str, Any]:
         "days_until_next_disbursement": None,
         "last_disbursement_date": None,
         "next_disbursement_date": None,
+        "upcoming_inflows": [],
+        "next_inflow": None,
         "cadence_days": None,
         "projected_balance_at_next_disbursement": None,
         "runway_shortfall_date": None,

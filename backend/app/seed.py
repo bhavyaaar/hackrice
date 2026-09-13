@@ -45,12 +45,16 @@ def seed_history(account_id: str, merchant_ids: dict[str, str] | None = None) ->
     mid = merchant_ids or create_merchants()
     last_aid = daterange_back(41)
     prev_aid = last_aid - timedelta(days=105)
-    nessie.create_deposit(account_id, 4200, prev_aid.isoformat(), "Financial Aid Refund")
-    nessie.create_deposit(account_id, 4350, last_aid.isoformat(), "Financial Aid Refund")
+    nessie.create_deposit(account_id, 1750, prev_aid.isoformat(), "Pell Grant Refund")
+    nessie.create_deposit(account_id, 2450, prev_aid.isoformat(), "Direct Loan Refund")
+    nessie.create_deposit(account_id, 1800, last_aid.isoformat(), "Pell Grant Refund")
+    nessie.create_deposit(account_id, 2550, last_aid.isoformat(), "Direct Loan Refund")
+    nessie.create_deposit(account_id, 1500, (prev_aid + timedelta(days=6)).isoformat(), "Rice Scholarship")
+    nessie.create_deposit(account_id, 1500, (last_aid + timedelta(days=6)).isoformat(), "Rice Scholarship")
 
     payroll_day = daterange_back(170)
     while payroll_day <= date.today():
-        nessie.create_deposit(account_id, 380, payroll_day.isoformat(), "Payroll")
+        nessie.create_deposit(account_id, 380, payroll_day.isoformat(), "Work-Study paycheck")
         payroll_day += timedelta(days=14)
 
     cursor = daterange_back(160)
@@ -80,6 +84,27 @@ def seed_history(account_id: str, merchant_ids: dict[str, str] | None = None) ->
     nessie.create_bill(account_id, "Campus Housing", 390, date.today().replace(day=1).isoformat(), 1)
     nessie.create_bill(account_id, "Netflix", 15.49, date.today().replace(day=12).isoformat(), 12)
     return mid
+
+
+def ensure_inflow_sample(account_id: str) -> None:
+    """Backfill named Pell / loan / scholarship / work-study deposits on older demos."""
+    deposits = nessie.list_deposits(account_id)
+    blob = " ".join(str(row.get("description") or "") for row in deposits).lower()
+    today = date.today()
+    if "pell" not in blob and "financial aid" not in blob and "aid refund" not in blob:
+        nessie.create_deposit(account_id, 1800, (today - timedelta(days=41)).isoformat(), "Pell Grant Refund")
+        nessie.create_deposit(account_id, 1750, (today - timedelta(days=146)).isoformat(), "Pell Grant Refund")
+    if "loan refund" not in blob and "direct loan" not in blob and "financial aid" not in blob:
+        nessie.create_deposit(account_id, 2550, (today - timedelta(days=41)).isoformat(), "Direct Loan Refund")
+        nessie.create_deposit(account_id, 2450, (today - timedelta(days=146)).isoformat(), "Direct Loan Refund")
+    if "scholarship" not in blob:
+        nessie.create_deposit(account_id, 1500, (today - timedelta(days=35)).isoformat(), "Rice Scholarship")
+        nessie.create_deposit(account_id, 1500, (today - timedelta(days=140)).isoformat(), "Rice Scholarship")
+    if "work-study" not in blob and "payroll" not in blob:
+        day = today - timedelta(days=70)
+        while day <= today:
+            nessie.create_deposit(account_id, 380, day.isoformat(), "Work-Study paycheck")
+            day += timedelta(days=14)
 
 
 def ensure_category_sample(account_id: str) -> None:
@@ -166,6 +191,7 @@ def provision_student(student: dict[str, Any]) -> dict[str, Any]:
         if deposits:
             try:
                 ensure_category_sample(account_id)
+                ensure_inflow_sample(account_id)
                 ensure_demo_spendable(account_id)
             except Exception:
                 pass
