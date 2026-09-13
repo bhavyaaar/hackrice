@@ -1,4 +1,4 @@
-# Northstar
+# northstar
 
 For college students who get aid in lumps and spend in drips — and cannot tell what is already in checking vs what is still a letter.
 
