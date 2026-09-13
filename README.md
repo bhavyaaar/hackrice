@@ -8,42 +8,9 @@ Nessie is the live-looking bank (Pell, scholarship, work-study, DoorDash). The s
 
 Expo talks to FastAPI; the phone never calls Gemini. Auth and data are Supabase.
 
-## 60-second demo
-
-1. **Sign up** — name, email, school, class year, housing. Bootstrap creates the student, a starter loan, and a Nessie demo account.
-2. **Dashboard** — safe-to-spend and upcoming inflows (Pell, scholarship, work-study, loan refund) as separate dates.
-3. **Advisor → Anchor** — simulate a DoorDash (or ask “Can I afford a $70 Chicago trip?”). Get go / tight / skip against cash until the next inflow.
-4. **Scan** — photo, camera, or PDF of an award letter. OCR + Compass explains what hits checking vs what is debt.
-5. **Finances** — extra **$50/month**. Horizon shows months and interest saved vs paying minimums.
-
-## What it does
-
-- **Dashboard** — safe-to-spend, upcoming inflows (Pell, scholarship, work-study, loan refund), spend mix, and campus help links
-- **Scan** — camera, photo library, or PDF of an award letter; Cloud Vision OCR + Gemini extraction; saved to Supabase Storage (`award-letters`)
-- **Finances** — loan snapshot and Horizon extra-payment simulation (months / interest saved)
-- **Advisor** — **Anchor** (impulse check + simulate purchase) and **Compass** (one concept at a time)
-- **Profile** — housing, first-gen / international / Pell / work-study flags that change agent advice
 
 Signup/login is email + password via Supabase Auth. First authenticated call is `POST /api/me/bootstrap`, which creates the student row, a starter loan, and a Nessie demo account.
 
-## Architecture
-
-```
-mobile (Expo)  --Bearer JWT-->  FastAPI  -->  Gemini, Cloud Vision, Nessie
-                                    |
-                                    v
-                               Supabase (Postgres + Storage)
-```
-
-Once uvicorn is running, the route list is at `http://localhost:8000/docs`.
-
-Agents:
-
-| Agent | Role | Used from |
-| --- | --- | --- |
-| Anchor | Go / tight / skip on a purchase vs cash until the next named inflow | Advisor, simulate-purchase |
-| Horizon | Cash until next paycheck/refund; extra monthly payment preview | Finances |
-| Compass | One aid/loan concept, plus award-letter explanation | Advisor, Scan |
 
 ## Run locally
 
